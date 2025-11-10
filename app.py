@@ -1,5 +1,9 @@
+# Improved Streamlit app with explicit API key form/button and safer session handling
+import os
+import json
+import urllib.request
+import urllib.error
 import streamlit as st
-from openai import OpenAI
 
 # Page configuration
 st.set_page_config(page_title="UAB Sveikata - Exercise Planner", layout="centered")
@@ -7,25 +11,38 @@ st.set_page_config(page_title="UAB Sveikata - Exercise Planner", layout="centere
 st.title("💪 UAB Sveikata - Weekly Exercise Plan Generator")
 st.markdown("Get personalized weekly exercise recommendations powered by AI")
 
-# Initialize session state for API key
-if "api_key_set" not in st.session_state:
-    st.session_state.api_key_set = False
+# -- Session state defaults
+if "openai_api_key" not in st.session_state:
+    st.session_state.openai_api_key = ""
 
-# API Key input
+# API Key form (explicit submit) so users can paste and then click Set
 st.markdown("---")
 st.subheader("🔐 API Configuration")
-api_key = st.text_input(
-    "Enter your OpenAI API key:",
-    type="password",
-    help="Your API key is not stored. Enter it each session."
-)
+with st.form("api_key_form"):
+    key_input = st.text_input(
+        "Enter your OpenAI API key:",
+        value=st.session_state.get("openai_api_key", ""),
+        type="password",
+        placeholder="sk-...",
+        help="Your API key is kept in session only and not stored on disk."
+    )
+    set_key = st.form_submit_button("Set API key")
 
-if api_key:
-    st.session_state.api_key_set = True
-    client = OpenAI(api_key=api_key)
+if set_key:
+    if key_input and key_input.strip():
+        st.session_state.openai_api_key = key_input.strip()
+        st.success("API key set for this session")
+    else:
+        st.session_state.openai_api_key = ""
+        st.warning("Empty key — API key not set")
+
+if st.session_state.openai_api_key:
+    st.info("API key is set. You can now generate a plan.")
+    if st.button("Clear API key"):
+        st.session_state.openai_api_key = ""
+        st.experimental_rerun()
 else:
-    st.warning("⚠️ Please enter your OpenAI API key to continue")
-    st.stop()
+    st.warning("⚠️ Please set your OpenAI API key above (paste then press 'Set API key').")
 
 # Input form
 st.markdown("---")
@@ -122,37 +139,65 @@ Provide clear, actionable advice."""
     # Show loading message
     with st.spinner("🔄 Generating your personalized exercise plan..."):
         try:
-            # Call OpenAI API
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are a professional fitness advisor. Provide safe, practical exercise recommendations."
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
+            # Ensure we have an API key in session
+            if not st.session_state.openai_api_key:
+                st.error("No API key found in session. Please set it using the 'Set API key' button above.")
+                st.stop()
+
+            # Use the OpenAI REST API directly with the session API key to avoid
+            # relying on the installed OpenAI Python client (which can fail in
+            # some environments with unexpected kwargs like 'proxies'). This
+            # uses only the Python standard library (urllib) so no extra deps.
+            api_key = st.session_state.openai_api_key
+            url = "https://api.openai.com/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            }
+            payload = {
+                "model": "gpt-4o-mini",
+                "messages": [
+                    {"role": "system", "content": "You are a professional fitness advisor. Provide safe, practical exercise recommendations."},
+                    {"role": "user", "content": prompt},
                 ],
-                temperature=0.7,
-                max_tokens=1500
-            )
-            
-            plan = response.choices[0].message.content
-            
+                "temperature": 0.7,
+                "max_tokens": 1500,
+            }
+
+            data = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+            try:
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    resp_text = resp.read().decode("utf-8")
+                    response = json.loads(resp_text)
+            except urllib.error.HTTPError as he:
+                err_text = he.read().decode("utf-8")
+                raise RuntimeError(f"OpenAI API HTTP error: {he.code} {err_text}")
+            except Exception as ex:
+                raise RuntimeError(f"OpenAI API request failed: {ex}")
+
+            # Extract content safely from the response
+            try:
+                plan = response["choices"][0]["message"]["content"]
+            except Exception:
+                # Fallbacks for other shapes
+                try:
+                    plan = response.choices[0].message.content
+                except Exception:
+                    plan = getattr(response, "text", "") or str(response)
+
             # Verify required start and end texts
             if "UAB Sveikata agent here" not in plan:
                 plan = "UAB Sveikata agent here…\n\n" + plan
-            
+
             if "This answer was generated by AI and is not professional medical advice." not in plan:
                 plan = plan + "\n\nThis answer was generated by AI and is not professional medical advice."
-            
+
             # Display the plan
             st.markdown("---")
             st.subheader("✅ Your Personalized Weekly Exercise Plan")
             st.markdown(plan)
-            
+
             # Display metadata
             st.markdown("---")
             st.markdown("### 📊 Plan Details")
@@ -161,10 +206,16 @@ Provide clear, actionable advice."""
             col2.metric("Daily Time", f"{minutes_per_day} min")
             col3.metric("Goal", goal)
             col4.metric("Model", "GPT-4o-mini")
-            
+
         except Exception as e:
-            st.error(f"❌ Error generating plan: {str(e)}")
-            st.info("Please check your API key and try again.")
+            err_str = str(e)
+            if "401" in err_str or "invalid" in err_str.lower() or "unauthorized" in err_str.lower():
+                st.error("❌ Authentication error: the API key appears invalid. Re-enter your key and press 'Set API key'.")
+            elif "rate limit" in err_str.lower():
+                st.error("❌ Rate limit or quota exceeded. Check your OpenAI account usage.")
+            else:
+                st.error(f"❌ Error generating plan: {err_str}")
+            st.info("If this persists, verify your API key at https://platform.openai.com/account/api-keys and try again.")
 
 # Footer
 st.markdown("---")
