@@ -1,0 +1,159 @@
+# UAB Sveikata - Weekly Exercise Plan Generator
+
+A Streamlit web application that generates personalized weekly exercise plans using OpenAI's GPT-4o-mini model. The app takes into account user's age, fitness goals, available time, and health conditions to recommend safe and effective exercise routines.
+
+## Features
+
+- 🤖 **AI-Powered Recommendations**: Uses OpenAI API to generate personalized exercise plans
+- 💪 **Flexible Goals**: Support for "Lose weight" and "Gain muscle" fitness objectives
+- 🏥 **Health Awareness**: Considers known health issues when creating plans
+- ⏱️ **Time-Based Planning**: Tailors recommendations to available daily exercise time
+- 🔒 **Privacy-Focused**: API key is never stored, required per session
+- ✅ **Input Validation**: Ensures data quality and rejects unrelated topics
+- 🎨 **Beautiful UI**: Clean, intuitive Streamlit interface
+
+## Installation
+
+### Requirements
+- Python 3.8 or higher
+- pip (Python package installer)
+- OpenAI API key ([get one here](https://platform.openai.com/api-keys))
+
+### Step 1: Clone or Download the Project
+```bash
+cd /path/to/exercise-agent
+```
+
+### Step 2: Create a Virtual Environment (Optional but Recommended)
+```bash
+python3 -m venv venv
+source venv/bin/activate  # On macOS/Linux
+# or
+venv\Scripts\activate  # On Windows
+```
+
+### Step 3: Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+## Running the App
+
+### Start the Streamlit Server
+```bash
+streamlit run app.py
+```
+
+The app will open in your default browser at `http://localhost:8501`
+
+### Using the App
+1. Enter your OpenAI API key (kept secure, not stored)
+2. Fill in your information:
+   - **Age**: Your current age (1-120)
+   - **Minutes per day**: How much time you can exercise daily (5-240 minutes)
+   - **Goal**: Select either "Lose weight" or "Gain muscle"
+   - **Health issues**: Optional field for describing relevant health conditions
+3. Click "🚀 Generate My Exercise Plan"
+4. Review your personalized weekly exercise plan
+
+## Input Validation
+
+The app includes safety features:
+- **Age validation**: Must be a number between 1 and 120
+- **Time validation**: Must be at least 5 minutes per day
+- **Goal validation**: Only allows predefined goals
+- **Topic filtering**: Rejects unrelated topics (e.g., cars, crypto, politics) to keep responses relevant
+
+## API Requirements
+
+- **OpenAI Account**: Required for API key
+- **Model**: Uses `gpt-4o-mini` (cost-effective model)
+- **Credits**: API usage is billed based on tokens consumed
+
+## Project Structure
+
+```
+exercise-agent/
+├── app.py              # Main Streamlit application
+├── requirements.txt    # Python dependencies
+└── README.md          # This file
+```
+
+## Troubleshooting
+
+### "Import streamlit could not be resolved"
+- Ensure you've installed dependencies: `pip install -r requirements.txt`
+- Verify your virtual environment is activated
+
+### "Invalid API key"
+- Check that your OpenAI API key is correct
+- Ensure your account has available credits
+- Visit [platform.openai.com](https://platform.openai.com/account/api-keys) to verify
+
+### "Rate limit exceeded"
+- OpenAI has rate limits on API calls
+- Wait a few moments before making another request
+- Check your account usage at [platform.openai.com/account/usage](https://platform.openai.com/account/usage)
+
+## Disclaimer
+
+⚠️ **Important**: This application provides AI-generated fitness suggestions for informational purposes only. It is not a substitute for professional medical advice, diagnosis, or treatment. Always consult with a qualified healthcare provider or certified fitness professional before starting any new exercise program, especially if you have pre-existing health conditions.
+
+## Technologies Used
+
+- **Streamlit**: Web framework for building interactive data apps
+- **OpenAI API**: GPT-4o-mini model for generating personalized recommendations
+- **Python**: Core programming language
+
+## License
+
+This project is provided as-is for educational and personal use.
+
+---
+
+## Reflection
+
+### What Was Done
+
+This project successfully implements a complete Streamlit application for personalized exercise planning using OpenAI's API. The key accomplishments include:
+
+1. **User-Friendly Interface**: Built a clean, intuitive Streamlit UI with organized sections for API configuration, user information input, and plan display.
+
+2. **Robust Input Validation**: Implemented comprehensive validation for:
+   - Numeric inputs (age, exercise time)
+   - Dropdown selection for goals
+   - Topic filtering to reject unrelated discussions
+
+3. **Secure API Integration**: Integrated OpenAI API with proper error handling and temporary API key input (not persistent storage).
+
+4. **Compliance with Requirements**: Ensured all responses include:
+   - Required opening: "UAB Sveikata agent here…"
+   - Required closing: "This answer was generated by AI and is not professional medical advice."
+
+5. **Minimal Dependencies**: Used only two external packages (Streamlit and OpenAI) plus their transitive dependencies, avoiding bloat.
+
+### Possible Improvements
+
+1. **User History**: Add optional SQLite database to save past recommendations (with user consent).
+
+2. **Authentication**: Implement user accounts and store API keys securely using environment variables or encrypted storage.
+
+3. **Plan Customization**: Allow users to modify generated plans with feedback (e.g., "make it less intense") and regenerate.
+
+4. **Progress Tracking**: Add ability to upload workout logs and adjust recommendations based on actual progress.
+
+5. **Multi-Language Support**: Extend the app to support multiple languages given the "Sveikata" (Lithuanian) branding.
+
+6. **Advanced Health Assessment**: Implement a more detailed health questionnaire using dynamic form fields.
+
+7. **Export Functionality**: Allow users to download plans as PDF or share via email.
+
+8. **Cost Estimation**: Display estimated API costs before generating plans to help users budget.
+
+9. **Fallback Models**: If GPT-4o-mini is unavailable, automatically fall back to GPT-3.5-turbo.
+
+10. **Caching**: Implement caching for identical requests to reduce API costs.
+
+11. **Progressive Enhancement**: Add charts/visualizations for exercise distribution across the week.
+
+12. **Rate Limiting**: Implement client-side rate limiting to prevent excessive API calls.
